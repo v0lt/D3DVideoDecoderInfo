@@ -3,6 +3,7 @@
 #pragma comment(lib, "dxgi.lib")
 
 #include <iostream>
+#include <iomanip>
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -314,13 +315,38 @@ void TestDecoder_D3D11()
 
 			auto str = DecoderProfileToString(decoderProfile);
 			if (str && str[0]) {
-				std::wcout << std::endl << "  " << str;
+				std::wcout << std::endl << "  " << std::left << std::setw(30) << str;
 			}
-#if 0
 			else {
+#if 0
 				std::wcout << std::endl << "  " << GUIDtoWString(decoderProfile);
-			}
 #endif
+				continue;
+			}
+
+			std::vector<DXGI_FORMAT> decodeFormats;
+
+			for (UINT format = 1; format <= 190; format++) {
+				BOOL supported = FALSE;
+				hr = pVideoDevice->CheckVideoDecoderFormat(&decoderProfile, (DXGI_FORMAT)format, &supported);
+				if (FAILED(hr)) {
+					continue;
+				}
+				if (supported) {
+					decodeFormats.emplace_back((DXGI_FORMAT)format);
+				}
+			}
+
+			if (decodeFormats.size()) {
+				std::wcout << L"(";
+				for (size_t j = 0; j < decodeFormats.size(); j++) {
+					if (j) {
+						std::wcout << L", ";
+					}
+					std::wcout << DXGIFormatToString(decodeFormats[j]);
+				}
+				std::wcout << L")";
+			}
 		}
 		std::wcout << std::endl;
 	}
@@ -405,7 +431,7 @@ void TestDecoder_D3D12()
 			std::wcout << std::endl << "  ";
 			auto str = DecoderProfileToString(decodeProfile);
 			if (str) {
-				std::wcout << str;
+				std::wcout << std::left << std::setw(30) << str;
 			}
 			else {
 				std::wcout << GUIDtoWString(decodeProfile);
@@ -439,7 +465,7 @@ void TestDecoder_D3D12()
 				continue;
 			}
 
-			std::wcout << L"  (";
+			std::wcout << L"(";
 			for (size_t j = 0; j < decodeFormats.size(); j++) {
 				if (j) {
 					std::wcout << L", ";
