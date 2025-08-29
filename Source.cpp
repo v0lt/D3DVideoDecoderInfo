@@ -146,7 +146,7 @@ const struct {
 	const GUID guid;
 	const wchar_t* str;
 }
-g_D3D11DecoderProfileInfos[] = {
+g_DecoderProfileInfos[] = {
 	// D3D12 (D3D11) decoders "3d12video.h"
 	{ D3D12_VIDEO_DECODE_PROFILE_MPEG2,                     L"MPEG2" },
 	{ D3D12_VIDEO_DECODE_PROFILE_MPEG1_AND_MPEG2,           L"MPEG1_AND_MPEG2" },
@@ -190,21 +190,6 @@ g_D3D11DecoderProfileInfos[] = {
 	{ D3D11_DECODER_PROFILE_H264_VLD_FGT,                   L"H264_FGT" },
 	{ D3D11_DECODER_PROFILE_H264_VLD_WITHFMOASO_NOFGT,      L"H264_WITHFMOASO_NOFGT" },
 	{ D3D11_DECODER_PROFILE_MPEG4PT2_VLD_ADVSIMPLE_GMC,     L"MPEG4PT2_ADVSIMPLE_GMC" },
-	// obsolete incomplete decoders (MOCOMP, IDCT, POSTPROC)
-	{ D3D11_DECODER_PROFILE_MPEG2_MOCOMP,                   L"" },
-	{ D3D11_DECODER_PROFILE_MPEG2_IDCT,                     L"" },
-	{ D3D11_DECODER_PROFILE_H264_MOCOMP_NOFGT,              L"" },
-	{ D3D11_DECODER_PROFILE_H264_MOCOMP_FGT,                L"" },
-	{ D3D11_DECODER_PROFILE_H264_IDCT_NOFGT,                L"" },
-	{ D3D11_DECODER_PROFILE_H264_IDCT_FGT,                  L"" },
-	{ D3D11_DECODER_PROFILE_WMV8_POSTPROC,                  L"" },
-	{ D3D11_DECODER_PROFILE_WMV8_MOCOMP,                    L"" },
-	{ D3D11_DECODER_PROFILE_WMV9_POSTPROC,                  L"" },
-	{ D3D11_DECODER_PROFILE_WMV9_MOCOMP,                    L"" },
-	{ D3D11_DECODER_PROFILE_WMV9_IDCT,                      L"" },
-	{ D3D11_DECODER_PROFILE_VC1_POSTPROC,                   L"" },
-	{ D3D11_DECODER_PROFILE_VC1_MOCOMP,                     L"" },
-	{ D3D11_DECODER_PROFILE_VC1_IDCT,                       L"" },
 	// Nvidia decoders
 	{ DXVA2_MPEG4pt2_VLD_AdvSimple_Nvidia,                  L"MPEG4pt2_AdvSimple_Nvidia" },
 	{ DXVA2_MJPEG_VLD_Nvidia,                               L"MJPEG_Nvidia" },
@@ -227,9 +212,26 @@ g_D3D11DecoderProfileInfos[] = {
 	{ DXVA2_HEVC_VLD_Main444_12_Intel,                      L"HEVC_Main444_12_Intel" },
 };
 
+const GUID g_ObsoleteDecoders[] = { // obsolete incomplete decoders (MOCOMP, IDCT, POSTPROC)
+	D3D11_DECODER_PROFILE_MPEG2_MOCOMP,
+	D3D11_DECODER_PROFILE_MPEG2_IDCT,
+	D3D11_DECODER_PROFILE_H264_MOCOMP_NOFGT,
+	D3D11_DECODER_PROFILE_H264_MOCOMP_FGT,
+	D3D11_DECODER_PROFILE_H264_IDCT_NOFGT,
+	D3D11_DECODER_PROFILE_H264_IDCT_FGT,
+	D3D11_DECODER_PROFILE_WMV8_POSTPROC,
+	D3D11_DECODER_PROFILE_WMV8_MOCOMP,
+	D3D11_DECODER_PROFILE_WMV9_POSTPROC,
+	D3D11_DECODER_PROFILE_WMV9_MOCOMP,
+	D3D11_DECODER_PROFILE_WMV9_IDCT,
+	D3D11_DECODER_PROFILE_VC1_POSTPROC,
+	D3D11_DECODER_PROFILE_VC1_MOCOMP,
+	D3D11_DECODER_PROFILE_VC1_IDCT,
+};
+
 const wchar_t* DecoderProfileToString(const GUID decoder_profile)
 {
-	for (const auto& decoderProfileInfo : g_D3D11DecoderProfileInfos) {
+	for (const auto& decoderProfileInfo : g_DecoderProfileInfos) {
 		if (decoder_profile == decoderProfileInfo.guid) {
 			return decoderProfileInfo.str;
 		}
@@ -237,6 +239,16 @@ const wchar_t* DecoderProfileToString(const GUID decoder_profile)
 
 	return nullptr;
 }
+
+bool IsObsoleteDecoder(const GUID decoder_profile) {
+	for (const auto& guid : g_ObsoleteDecoders) {
+		if (decoder_profile == guid) {
+			return true;
+		}
+	}
+	return false;
+}
+
 using Microsoft::WRL::ComPtr;
 
 void TestDecoder_D3D11()
@@ -306,6 +318,9 @@ void TestDecoder_D3D11()
 
 		std::wcout << "D3D11 video decoders [" << decoderProfileCount << L"]:";
 
+		int obsoleteDecCount = 0;
+		int unknownDecCount = 0;
+
 		for (UINT index = 0; index < decoderProfileCount; index++) {
 			GUID decoderProfile = {};
 			hr = pVideoDevice->GetVideoDecoderProfile(index, &decoderProfile);
@@ -314,10 +329,15 @@ void TestDecoder_D3D11()
 			}
 
 			auto str = DecoderProfileToString(decoderProfile);
-			if (str && str[0]) {
+			if (str) {
 				std::wcout << std::endl << "  " << std::left << std::setw(30) << str;
 			}
+			else if (IsObsoleteDecoder(decoderProfile)){
+				obsoleteDecCount++;
+				continue;
+			}
 			else {
+				unknownDecCount++;
 #if 0
 				std::wcout << std::endl << "  " << GUIDtoWString(decoderProfile);
 #endif
@@ -349,6 +369,19 @@ void TestDecoder_D3D11()
 			}
 		}
 		std::wcout << std::endl;
+
+		if (obsoleteDecCount || unknownDecCount) {
+			if (obsoleteDecCount) {
+				std::wcout << obsoleteDecCount << " obsolete";
+				if (unknownDecCount) {
+					std::wcout << " and ";
+				}
+			}
+			if (unknownDecCount) {
+				std::wcout << unknownDecCount << " unknown";
+			}
+			std::wcout << " decoders are not shown." << std::endl;
+		}
 	}
 }
 
