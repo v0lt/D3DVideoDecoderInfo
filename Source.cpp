@@ -1,3 +1,5 @@
+#pragma comment(lib, "d3d9.lib")
+#pragma comment(lib, "dxva2.lib")
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -13,6 +15,8 @@
 #include <wrl/client.h>
 
 #include <initguid.h>
+#include <d3d9.h>
+#include <dxva2api.h>
 #include <d3d11_1.h>
 #include <d3d12video.h>
 #include <dxgi1_4.h>
@@ -118,6 +122,23 @@ inline std::wstring GUIDtoWString(const GUID& guid)
 		str.clear();
 	}
 	return str;
+}
+
+const wchar_t* D3DFormatToString(const D3DFORMAT format)
+{
+	switch (format) {
+	case D3DFMT_YUY2: return L"YUY2";
+	case MAKEFOURCC('N','V','1','2'): return L"NV12";
+	case MAKEFOURCC('A','Y','U','V'): return L"AYUV";
+	case MAKEFOURCC('P','0','1','0'): return L"P010";
+	case MAKEFOURCC('P','0','1','6'): return L"P016";
+	case MAKEFOURCC('Y','2','1','0'): return L"Y210";
+	case MAKEFOURCC('Y','2','1','6'): return L"Y216";
+	case MAKEFOURCC('Y','4','1','0'): return L"Y410";
+	case MAKEFOURCC('Y','4','1','6'): return L"Y416";
+	}
+
+	return L"UNKNOWN";
 }
 
 const wchar_t* DXGIFormatToString(const DXGI_FORMAT format)
@@ -272,6 +293,126 @@ bool IsObsoleteDecoder(const GUID decoder_profile) {
 }
 
 using Microsoft::WRL::ComPtr;
+
+void TestDecoder_DXVA2()
+{
+	HRESULT hr = S_OK;
+	std::wcout << L"=== Direct3D 9 - DXVA2 ===" << std::endl;
+
+	ComPtr<IDirect3D9Ex> pD3D;
+	hr = Direct3DCreate9Ex(D3D_SDK_VERSION, pD3D.GetAddressOf());
+	if (FAILED(hr)) {
+		std::wcout << L"ERROR: Failed to create IDirect3D9Ex." << std::endl;
+		return;
+	}
+
+	const UINT adapterCount = pD3D->GetAdapterCount();
+
+	for (UINT uAdapter = 0; uAdapter < adapterCount; ++uAdapter) {
+		std::wcout << std::endl;
+		std::wcout << L"Graphics adapter " << uAdapter << L": ";
+		D3DADAPTER_IDENTIFIER9 identifier = {};
+		hr = pD3D->GetAdapterIdentifier(uAdapter, 0, &identifier);
+		if (FAILED(hr)) {
+			std::wcout << L"ERROR: Failed to GetAdapterIdentifier." << std::endl;
+			continue;
+		}
+		std::wcout << identifier.Description << std::endl;
+
+		D3DPRESENT_PARAMETERS d3dpp = {};
+		d3dpp.Windowed = TRUE;
+		d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+		d3dpp.hDeviceWindow = GetShellWindow();
+
+		ComPtr<IDirect3DDevice9Ex> pDevice;
+		hr = pD3D->CreateDeviceEx(
+			uAdapter,
+			D3DDEVTYPE_HAL,
+			d3dpp.hDeviceWindow,
+			D3DCREATE_MULTITHREADED | D3DCREATE_HARDWARE_VERTEXPROCESSING,
+			&d3dpp,
+			nullptr,
+			pDevice.GetAddressOf()
+		);
+		if (FAILED(hr)) {
+			std::wcout << L"ERROR: Failed to create IDirect3DDevice9Ex." << std::endl;
+			return;
+		}
+
+		ComPtr <IDirectXVideoDecoderService> pDecoderService;
+		hr = DXVA2CreateVideoService(pDevice.Get(), IID_PPV_ARGS(pDecoderService.GetAddressOf()));
+		if (FAILED(hr)) {
+			std::wcout << L"ERROR: Failed to create IDirectXVideoDecoderService." << std::endl;
+			return;
+		}
+
+		UINT decoderCount = 0;
+		hr = pDecoderService->GetDecoderDeviceGuids(&decoderCount, nullptr);
+		if (SUCCEEDED(hr) && decoderCount > 0) {
+			GUID* pDecoderGuids = nullptr;
+
+			hr = pDecoderService->GetDecoderDeviceGuids(&decoderCount, &pDecoderGuids);
+			if (SUCCEEDED(hr)) {
+				int obsoleteDecCount = 0;
+				int unknownDecCount = 0;
+
+				std::wcout << L"DXVA2 video decoders [" << decoderCount << L"]:";
+
+				for (UINT i = 0; i < decoderCount; ++i) {
+					auto decoderGuid = pDecoderGuids[i];
+					auto str = DecoderProfileToString(decoderGuid);
+					if (str) {
+						std::wcout << std::endl << L"  " << std::left << std::setw(30) << str;
+
+						UINT formatCount = 0;
+						hr = pDecoderService->GetDecoderRenderTargets(decoderGuid, &formatCount, nullptr);
+						if (SUCCEEDED(hr) && formatCount > 0) {
+							D3DFORMAT* pFormats = nullptr;
+							hr = pDecoderService->GetDecoderRenderTargets(decoderGuid, &formatCount, &pFormats);
+							if (SUCCEEDED(hr)) {
+								std::wcout << L"(";
+								for (UINT j = 0; j < formatCount; j++) {
+									if (j) {
+										std::wcout << L", ";
+									}
+									std::wcout << D3DFormatToString(pFormats[j]);
+								}
+								std::wcout << L")";
+							}
+						}
+					}
+					else if (IsObsoleteDecoder(decoderGuid)) {
+						obsoleteDecCount++;
+						continue;
+					}
+					else {
+						unknownDecCount++;
+#if 0
+						std::wcout << std::endl << L"  " << GUIDtoWString(decoderGuid);
+#endif
+						continue;
+					}
+				}
+				std::wcout << std::endl;
+
+				CoTaskMemFree(pDecoderGuids);
+
+				if (obsoleteDecCount || unknownDecCount) {
+					if (obsoleteDecCount) {
+						std::wcout << obsoleteDecCount << L" obsolete";
+						if (unknownDecCount) {
+							std::wcout << L" and ";
+						}
+					}
+					if (unknownDecCount) {
+						std::wcout << unknownDecCount << L" unknown";
+					}
+					std::wcout << L" decoders are not shown." << std::endl;
+				}
+			}
+		}
+	}
+}
 
 void TestDecoder_D3D11()
 {
@@ -574,6 +715,10 @@ void TestDecoder_D3D12()
 
 int wmain()
 {
+	TestDecoder_DXVA2();
+
+	std::wcout << std::endl;
+
 	TestDecoder_D3D11();
 
 	std::wcout << std::endl;
