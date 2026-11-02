@@ -276,12 +276,12 @@ using Microsoft::WRL::ComPtr;
 void TestDecoder_D3D11()
 {
 	HRESULT hr = S_OK;
-	std::wcout << "=== Direct3D 11 ===" << std::endl;
+	std::wcout << L"=== Direct3D 11 ===" << std::endl;
 
 	ComPtr<IDXGIFactory1> pDxgiFactory;
 	hr = CreateDXGIFactory1(IID_PPV_ARGS(pDxgiFactory.GetAddressOf()));
 	if (FAILED(hr)) {
-		std::wcout << "ERROR: Failed to create IDXGIFactory1." << std::endl;
+		std::wcout << L"ERROR: Failed to create IDXGIFactory1." << std::endl;
 		return;
 	}
 
@@ -289,11 +289,11 @@ void TestDecoder_D3D11()
 	UINT uAdapter = 0;
 	while (SUCCEEDED(pDxgiFactory->EnumAdapters1(uAdapter++, pDxgiAdapter.GetAddressOf()))) {
 		std::wcout << std::endl;
-		std::wcout << "Graphics adapter " << (uAdapter - 1) << L": ";
+		std::wcout << L"Graphics adapter " << (uAdapter - 1) << L": ";
 		DXGI_ADAPTER_DESC1 desc = {};
 		hr = pDxgiAdapter->GetDesc1(&desc);
 		if (FAILED(hr)) {
-			std::wcout << "ERROR: Failed to get description." << std::endl;
+			std::wcout << L"ERROR: Failed to get description." << std::endl;
 			pDxgiAdapter->Release();
 			continue;
 		}
@@ -321,24 +321,24 @@ void TestDecoder_D3D11()
 		);
 		pDxgiAdapter->Release();
 		if (FAILED(hr)) {
-			std::wcout << "ERROR: Failed to create device D3D11." << std::endl;
+			std::wcout << L"ERROR: Failed to create device D3D11." << std::endl;
 			continue;
 		}
 
 		ComPtr<ID3D11VideoDevice> pVideoDevice;
 		hr = pDevice.As(&pVideoDevice);
 		if (FAILED(hr)) {
-			std::wcout << "ERROR: Failed to get ID3D11VideoDevice." << std::endl;
+			std::wcout << L"ERROR: Failed to get ID3D11VideoDevice." << std::endl;
 			continue;
 		}
 
 		const UINT decoderProfileCount = pVideoDevice->GetVideoDecoderProfileCount();
 		if (!decoderProfileCount) {
-			std::wcout << "ERROR: Failed to DecoderProfileCount." << std::endl;
+			std::wcout << L"ERROR: Failed to DecoderProfileCount." << std::endl;
 			continue;
 		}
 
-		std::wcout << "D3D11 video decoders [" << decoderProfileCount << L"]:";
+		std::wcout << L"D3D11 video decoders [" << decoderProfileCount << L"]:";
 
 		int obsoleteDecCount = 0;
 		int unknownDecCount = 0;
@@ -352,7 +352,7 @@ void TestDecoder_D3D11()
 
 			auto str = DecoderProfileToString(decoderProfile);
 			if (str) {
-				std::wcout << std::endl << "  " << std::left << std::setw(30) << str;
+				std::wcout << std::endl << L"  " << std::left << std::setw(30) << str;
 			}
 			else if (IsObsoleteDecoder(decoderProfile)){
 				obsoleteDecCount++;
@@ -361,7 +361,7 @@ void TestDecoder_D3D11()
 			else {
 				unknownDecCount++;
 #if 0
-				std::wcout << std::endl << "  " << GUIDtoWString(decoderProfile);
+				std::wcout << std::endl << L"  " << GUIDtoWString(decoderProfile);
 #endif
 				continue;
 			}
@@ -394,15 +394,15 @@ void TestDecoder_D3D11()
 
 		if (obsoleteDecCount || unknownDecCount) {
 			if (obsoleteDecCount) {
-				std::wcout << obsoleteDecCount << " obsolete";
+				std::wcout << obsoleteDecCount << L" obsolete";
 				if (unknownDecCount) {
-					std::wcout << " and ";
+					std::wcout << L" and ";
 				}
 			}
 			if (unknownDecCount) {
-				std::wcout << unknownDecCount << " unknown";
+				std::wcout << unknownDecCount << L" unknown";
 			}
-			std::wcout << " decoders are not shown." << std::endl;
+			std::wcout << L" decoders are not shown." << std::endl;
 		}
 	}
 }
@@ -410,7 +410,7 @@ void TestDecoder_D3D11()
 void TestDecoder_D3D12()
 {
 	HRESULT hr = S_OK;
-	std::wcout << "=== Direct3D 12 ===" << std::endl;
+	std::wcout << L"=== Direct3D 12 ===" << std::endl;
 
 #ifdef _DEBUG
 	{
@@ -425,7 +425,7 @@ void TestDecoder_D3D12()
 	ComPtr<IDXGIFactory4> pDxgiFactory;
 	hr = CreateDXGIFactory1(IID_PPV_ARGS(pDxgiFactory.GetAddressOf()));
 	if (FAILED(hr)) {
-		std::wcout << "ERROR: Failed to create IDXGIFactory4." << std::endl;
+		std::wcout << L"ERROR: Failed to create IDXGIFactory4." << std::endl;
 		return;
 	}
 
@@ -433,11 +433,11 @@ void TestDecoder_D3D12()
 	UINT uAdapter = 0;
 	while (SUCCEEDED(pDxgiFactory->EnumAdapters1(uAdapter++, pDxgiAdapter.GetAddressOf()))) {
 		std::wcout << std::endl;
-		std::wcout << "Graphics adapter " << (uAdapter - 1) << L": ";
+		std::wcout << L"Graphics adapter " << (uAdapter - 1) << L": ";
 		DXGI_ADAPTER_DESC1 desc = {};
 		hr = pDxgiAdapter->GetDesc1(&desc);
 		if (FAILED(hr)) {
-			std::wcout << "ERROR: Failed to get description." << std::endl;
+			std::wcout << L"ERROR: Failed to get description." << std::endl;
 			pDxgiAdapter->Release();
 			continue;
 		}
@@ -451,21 +451,21 @@ void TestDecoder_D3D12()
 		);
 		pDxgiAdapter->Release();
 		if (FAILED(hr)) {
-			std::wcout << "ERROR: Failed to create device D3D12." << std::endl;
+			std::wcout << L"ERROR: Failed to create device D3D12." << std::endl;
 			continue;
 		}
 
 		ComPtr<ID3D12VideoDevice> pVideoDevice;
 		hr = pDevice.As(&pVideoDevice);
 		if (FAILED(hr)) {
-			std::wcout << "ERROR: Failed to get ID3D12VideoDevice." << std::endl;
+			std::wcout << L"ERROR: Failed to get ID3D12VideoDevice." << std::endl;
 			continue;
 		}
 
 		D3D12_FEATURE_DATA_VIDEO_DECODE_PROFILE_COUNT decodeProfileCountData = { 0, 0 };
 		hr = pVideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_DECODE_PROFILE_COUNT, &decodeProfileCountData, sizeof(decodeProfileCountData));
 		if (FAILED(hr) || !decodeProfileCountData.ProfileCount) {
-			std::wcout << "ERROR: Failed to get D3D12_FEATURE_VIDEO_DECODE_PROFILE_COUNT." << std::endl;
+			std::wcout << L"ERROR: Failed to get D3D12_FEATURE_VIDEO_DECODE_PROFILE_COUNT." << std::endl;
 			continue;
 		}
 
@@ -477,13 +477,13 @@ void TestDecoder_D3D12()
 		};
 		hr = pVideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_DECODE_PROFILES, &decoderProfilesData, sizeof(decoderProfilesData));
 		if (FAILED(hr)) {
-			std::wcout << "ERROR: Failed to get D3D12_FEATURE_VIDEO_DECODE_PROFILES." << std::endl;
+			std::wcout << L"ERROR: Failed to get D3D12_FEATURE_VIDEO_DECODE_PROFILES." << std::endl;
 			continue;
 		}
 
-		std::wcout << "D3D12 video decoders [" << decodeProfileCountData.ProfileCount << L"]:";
+		std::wcout << L"D3D12 video decoders [" << decodeProfileCountData.ProfileCount << L"]:";
 		for (const auto& decodeProfile : decodeProfiles) {
-			std::wcout << std::endl << "  ";
+			std::wcout << std::endl << L"  ";
 			auto str = DecoderProfileToString(decodeProfile);
 			if (str) {
 				std::wcout << std::left << std::setw(30) << str;
