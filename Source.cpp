@@ -1,7 +1,6 @@
 #pragma comment(lib, "d3d9.lib")
 #pragma comment(lib, "dxva2.lib")
 #pragma comment(lib, "d3d11.lib")
-#pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
 #include <iostream>
@@ -553,12 +552,27 @@ void TestDecoder_D3D12()
 	HRESULT hr = S_OK;
 	std::wcout << L"=== Direct3D 12 ===" << std::endl;
 
+	static HMODULE hD3D12 = LoadLibraryW(L"D3D12.dll");
+	if (!hD3D12) {
+		std::wcout << L"ERROR: Failed to load D3D12.dll." << std::endl;
+		return;
+	}
+	static PFN_D3D12_CREATE_DEVICE pfnD3D12CreateDevice = (PFN_D3D12_CREATE_DEVICE)GetProcAddress(hD3D12, "D3D12CreateDevice");
+	if (!pfnD3D12CreateDevice) {
+		std::wcout << L"ERROR: Function D3D12CreateDevice not found.." << std::endl;
+		return;
+	}
+
 #ifdef _DEBUG
 	{
-		// Enable the debug layer.
-		ComPtr<ID3D12Debug> debugController;
-		if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(debugController.GetAddressOf())))) {
-			debugController->EnableDebugLayer();
+		static PFN_D3D12_GET_DEBUG_INTERFACE pfnD3D12GetDebugInterface =
+			(PFN_D3D12_GET_DEBUG_INTERFACE)GetProcAddress(hD3D12, "D3D12GetDebugInterface");
+		if (pfnD3D12GetDebugInterface) {
+			// Enable the debug layer.
+			ComPtr<ID3D12Debug> debugController;
+			if (SUCCEEDED(pfnD3D12GetDebugInterface(IID_PPV_ARGS(debugController.GetAddressOf())))) {
+				debugController->EnableDebugLayer();
+			}
 		}
 	}
 #endif
@@ -585,7 +599,7 @@ void TestDecoder_D3D12()
 		std::wcout << desc.Description << std::endl;
 
 		ComPtr<ID3D12Device> pDevice;
-		hr = D3D12CreateDevice(
+		hr = pfnD3D12CreateDevice(
 			pDxgiAdapter.Get(),
 			D3D_FEATURE_LEVEL_12_0,
 			IID_PPV_ARGS(pDevice.GetAddressOf())
