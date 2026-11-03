@@ -1,5 +1,4 @@
-/.vs
-/Debug
-/Release
-/x64
+_bin/
+_obj/
+.vs/
 *.user
