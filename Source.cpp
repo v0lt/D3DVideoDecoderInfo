@@ -19,6 +19,7 @@
 #include <d3d11_1.h>
 #include <d3d12video.h>
 #include <dxgi1_4.h>
+#include <VersionHelpers.h>
 
 // {9947EC6F-689B-11DC-A320-0019DBBC4184}
 DEFINE_GUID(DXVA2_MPEG4pt2_VLD_AdvSimple_Nvidia, 0x9947EC6F, 0x689B, 0x11DC, 0xA3, 0x20, 0x00, 0x19, 0xDB, 0xBC, 0x41, 0x84);
@@ -289,6 +290,70 @@ bool IsObsoleteDecoder(const GUID decoder_profile) {
 		}
 	}
 	return false;
+}
+
+static LPCWSTR GetWinVer()
+{
+	// https://learn.microsoft.com/en-us/windows/release-health/release-information#windows-10-release-history
+	// https://learn.microsoft.com/en-us/windows/release-health/windows11-release-information#windows-11-release-history
+	const struct {
+		const DWORD buildNumber;
+		LPCWSTR version;
+	}
+	win10versions[] = {
+		{ 26300, L"11 26H2" },
+		{ 26200, L"11 25H2" },
+		{ 26100, L"11 24H2" },
+		{ 22631, L"11 23H2" },
+		{ 22621, L"11 22H2" },
+		{ 22000, L"11 21H2" },
+		{ 19045, L"10 22H2" },
+		{ 19044, L"10 21H2" },
+		{ 19043, L"10 21H1" },
+		{ 19042, L"10 20H2" },
+		{ 19041, L"10 2004" },
+		{ 18363, L"10 1909" },
+		{ 18362, L"10 1903" },
+		{ 17763, L"10 1809" },
+		{ 17134, L"10 1803" },
+		{ 16299, L"10 1709" },
+		{ 15063, L"10 1703" },
+		{ 14393, L"10 1607" },
+		{ 10586, L"10 1511" },
+		{ 10240, L"10 1507" },
+	};
+
+	OSVERSIONINFOEXW osvi = { sizeof(osvi),HIBYTE(_WIN32_WINNT_WIN10),LOBYTE(_WIN32_WINNT_WIN10), };
+	DWORDLONG const dwlConditionMask = VerSetConditionMask(
+		VerSetConditionMask(
+		VerSetConditionMask(
+			0, VER_MAJORVERSION, VER_GREATER_EQUAL),
+			   VER_MINORVERSION, VER_GREATER_EQUAL),
+			   VER_BUILDNUMBER,  VER_GREATER_EQUAL);
+
+	for (const auto& win10ver : win10versions) {
+		osvi.dwBuildNumber = win10ver.buildNumber;
+		if (VerifyVersionInfoW(&osvi, VER_MAJORVERSION | VER_MINORVERSION | VER_BUILDNUMBER, dwlConditionMask) != FALSE) {
+			return win10ver.version;
+		}
+	}
+
+	if (IsWindows10OrGreater()) {
+		return L"10";
+	}
+	if (IsWindows8Point1OrGreater()) {
+		return L"8.1";
+	}
+	if (IsWindows8OrGreater()) {
+		return L"8";
+	}
+	if (IsWindows7SP1OrGreater()) {
+		return L"7 SP1";
+	}
+	if (IsWindows7OrGreater()) {
+		return L"7";
+	}
+	return L"Vista or older";
 }
 
 using Microsoft::WRL::ComPtr;
@@ -741,6 +806,14 @@ void TestDecoder_D3D12()
 
 int wmain()
 {
+	std::wcout << L"D3DVideoDecoderInfo";
+#ifdef _M_X64
+	std::wcout << L" x64";
+#endif
+	std::wcout << std::endl;
+	std::wcout << L"Windows " << GetWinVer() << std::endl;
+	std::wcout << std::endl;
+
 	TestDecoder_DXVA2();
 
 	std::wcout << std::endl;
