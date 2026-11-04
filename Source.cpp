@@ -439,8 +439,12 @@ void TestDecoder_D3D11()
 		}
 		std::wcout << desc.Description << std::endl;
 
-		D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_1 };
-		D3D_FEATURE_LEVEL featurelevel = (D3D_FEATURE_LEVEL)0;
+		const D3D_FEATURE_LEVEL featureLevels[] = {
+			D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0,
+			D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0,
+			D3D_FEATURE_LEVEL_9_3, D3D_FEATURE_LEVEL_9_2, D3D_FEATURE_LEVEL_9_1
+		};
+		D3D_FEATURE_LEVEL featureLevel = (D3D_FEATURE_LEVEL)0;
 
 		ComPtr<ID3D11Device> pDevice;
 		hr = D3D11CreateDevice(
@@ -456,7 +460,7 @@ void TestDecoder_D3D11()
 			(UINT)std::size(featureLevels),
 			D3D11_SDK_VERSION,
 			pDevice.GetAddressOf(),
-			&featurelevel,
+			&featureLevel,
 			nullptr
 		);
 		pDxgiAdapter->Release();
@@ -464,6 +468,7 @@ void TestDecoder_D3D11()
 			std::wcout << L"ERROR: Failed to create device D3D11." << std::endl;
 			continue;
 		}
+		std::wcout << L"Future Level: " << (featureLevel>>12) << L"_" << ((featureLevel>>8)&0xF) << std::endl;
 
 		ComPtr<ID3D11VideoDevice> pVideoDevice;
 		hr = pDevice.As(&pVideoDevice);
@@ -599,11 +604,18 @@ void TestDecoder_D3D12()
 		std::wcout << desc.Description << std::endl;
 
 		ComPtr<ID3D12Device> pDevice;
-		hr = pfnD3D12CreateDevice(
-			pDxgiAdapter.Get(),
-			D3D_FEATURE_LEVEL_12_0,
-			IID_PPV_ARGS(pDevice.GetAddressOf())
-		);
+		const D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_12_2, D3D_FEATURE_LEVEL_12_1, D3D_FEATURE_LEVEL_12_0 };
+		for (const auto& featureLevel : featureLevels) {
+			hr = pfnD3D12CreateDevice(
+				pDxgiAdapter.Get(),
+				featureLevel,
+				IID_PPV_ARGS(pDevice.GetAddressOf())
+			);
+			if (SUCCEEDED(hr)) {
+				std::wcout << L"Future Level: " << (featureLevel>>12) << L"_" << ((featureLevel>>8)&0xF) << std::endl;
+				break;
+			}
+		}
 		pDxgiAdapter->Release();
 		if (FAILED(hr)) {
 			std::wcout << L"ERROR: Failed to create device D3D12." << std::endl;
