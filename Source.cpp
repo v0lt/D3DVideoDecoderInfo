@@ -814,6 +814,8 @@ int wmain()
 	std::wcout << L"D3DVideoDecoderInfo";
 #ifdef _M_X64
 	std::wcout << L" x64";
+#else
+	std::wcout << L" win32";
 #endif
 	std::wcout << std::endl;
 	std::wcout << L"Windows " << GetWinVer() << std::endl;
