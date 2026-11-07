@@ -363,9 +363,8 @@ void TestDecoder_DXVA2()
 	HRESULT hr = S_OK;
 	std::wcout << L"=== Direct3D 9 - DXVA2 ===" << std::endl;
 
-	ComPtr<IDirect3D9Ex> pD3D;
-	hr = Direct3DCreate9Ex(D3D_SDK_VERSION, pD3D.GetAddressOf());
-	if (FAILED(hr)) {
+	ComPtr<IDirect3D9> pD3D = Direct3DCreate9(D3D_SDK_VERSION);
+	if (!pD3D) {
 		std::wcout << L"ERROR: Failed to create IDirect3D9Ex." << std::endl;
 		return;
 	}
@@ -388,14 +387,13 @@ void TestDecoder_DXVA2()
 		d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
 		d3dpp.hDeviceWindow = GetShellWindow();
 
-		ComPtr<IDirect3DDevice9Ex> pDevice;
-		hr = pD3D->CreateDeviceEx(
+		ComPtr<IDirect3DDevice9> pDevice;
+		hr = pD3D->CreateDevice(
 			uAdapter,
 			D3DDEVTYPE_HAL,
 			d3dpp.hDeviceWindow,
 			D3DCREATE_MULTITHREADED | D3DCREATE_HARDWARE_VERTEXPROCESSING,
 			&d3dpp,
-			nullptr,
 			pDevice.GetAddressOf()
 		);
 		if (FAILED(hr)) {
@@ -412,67 +410,74 @@ void TestDecoder_DXVA2()
 
 		UINT decoderCount = 0;
 		hr = pDecoderService->GetDecoderDeviceGuids(&decoderCount, nullptr);
-		if (SUCCEEDED(hr) && decoderCount > 0) {
-			GUID* pDecoderGuids = nullptr;
+		if (FAILED(hr)) {
+			std::wcout << L"ERROR: Failed to get GetDecoderDeviceGuids." << std::endl;
+			return;
+		}
+		if (!decoderCount) {
+			std::wcout << L"DXVA2 video decoders not found" << std::endl;
+			return;
+		}
 
-			hr = pDecoderService->GetDecoderDeviceGuids(&decoderCount, &pDecoderGuids);
-			if (SUCCEEDED(hr)) {
-				int obsoleteDecCount = 0;
-				int unknownDecCount = 0;
+		GUID* pDecoderGuids = nullptr;
 
-				std::wcout << L"DXVA2 video decoders [" << decoderCount << L"]:";
+		hr = pDecoderService->GetDecoderDeviceGuids(&decoderCount, &pDecoderGuids);
+		if (SUCCEEDED(hr)) {
+			int obsoleteDecCount = 0;
+			int unknownDecCount = 0;
 
-				for (UINT i = 0; i < decoderCount; ++i) {
-					auto decoderGuid = pDecoderGuids[i];
-					auto str = DecoderProfileToString(decoderGuid);
-					if (str) {
-						std::wcout << std::endl << L"  " << std::left << std::setw(30) << str;
+			std::wcout << L"DXVA2 video decoders [" << decoderCount << L"]:";
 
-						UINT formatCount = 0;
-						hr = pDecoderService->GetDecoderRenderTargets(decoderGuid, &formatCount, nullptr);
-						if (SUCCEEDED(hr) && formatCount > 0) {
-							D3DFORMAT* pFormats = nullptr;
-							hr = pDecoderService->GetDecoderRenderTargets(decoderGuid, &formatCount, &pFormats);
-							if (SUCCEEDED(hr)) {
-								std::wcout << L"(";
-								for (UINT j = 0; j < formatCount; j++) {
-									if (j) {
-										std::wcout << L", ";
-									}
-									std::wcout << D3DFormatToString(pFormats[j]);
+			for (UINT i = 0; i < decoderCount; ++i) {
+				auto decoderGuid = pDecoderGuids[i];
+				auto str = DecoderProfileToString(decoderGuid);
+				if (str) {
+					std::wcout << std::endl << L"  " << std::left << std::setw(30) << str;
+
+					UINT formatCount = 0;
+					hr = pDecoderService->GetDecoderRenderTargets(decoderGuid, &formatCount, nullptr);
+					if (SUCCEEDED(hr) && formatCount > 0) {
+						D3DFORMAT* pFormats = nullptr;
+						hr = pDecoderService->GetDecoderRenderTargets(decoderGuid, &formatCount, &pFormats);
+						if (SUCCEEDED(hr)) {
+							std::wcout << L"(";
+							for (UINT j = 0; j < formatCount; j++) {
+								if (j) {
+									std::wcout << L", ";
 								}
-								std::wcout << L")";
+								std::wcout << D3DFormatToString(pFormats[j]);
 							}
+							std::wcout << L")";
 						}
 					}
-					else if (IsObsoleteDecoder(decoderGuid)) {
-						obsoleteDecCount++;
-						continue;
-					}
-					else {
-						unknownDecCount++;
+				}
+				else if (IsObsoleteDecoder(decoderGuid)) {
+					obsoleteDecCount++;
+					continue;
+				}
+				else {
+					unknownDecCount++;
 #if 0
-						std::wcout << std::endl << L"  " << GUIDtoWString(decoderGuid);
+					std::wcout << std::endl << L"  " << GUIDtoWString(decoderGuid);
 #endif
-						continue;
-					}
+					continue;
 				}
-				std::wcout << std::endl;
+			}
+			std::wcout << std::endl;
 
-				CoTaskMemFree(pDecoderGuids);
+			CoTaskMemFree(pDecoderGuids);
 
-				if (obsoleteDecCount || unknownDecCount) {
-					if (obsoleteDecCount) {
-						std::wcout << obsoleteDecCount << L" obsolete";
-						if (unknownDecCount) {
-							std::wcout << L" and ";
-						}
-					}
+			if (obsoleteDecCount || unknownDecCount) {
+				if (obsoleteDecCount) {
+					std::wcout << obsoleteDecCount << L" obsolete";
 					if (unknownDecCount) {
-						std::wcout << unknownDecCount << L" unknown";
+						std::wcout << L" and ";
 					}
-					std::wcout << L" decoders are not shown." << std::endl;
 				}
+				if (unknownDecCount) {
+					std::wcout << unknownDecCount << L" unknown";
+				}
+				std::wcout << L" decoders are not shown." << std::endl;
 			}
 		}
 	}
