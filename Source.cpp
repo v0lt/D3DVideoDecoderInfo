@@ -533,7 +533,7 @@ void TestDecoder_D3D11()
 			std::wcout << L"ERROR: Failed to create device D3D11." << std::endl;
 			continue;
 		}
-		std::wcout << L"Future Level: " << (featureLevel>>12) << L"_" << ((featureLevel>>8)&0xF) << std::endl;
+		std::wcout << L"Feature Level: " << (featureLevel>>12) << L"_" << ((featureLevel>>8)&0xF) << std::endl;
 
 		ComPtr<ID3D11VideoDevice> pVideoDevice;
 		hr = pDevice.As(&pVideoDevice);
@@ -677,7 +677,7 @@ void TestDecoder_D3D12()
 				IID_PPV_ARGS(pDevice.GetAddressOf())
 			);
 			if (SUCCEEDED(hr)) {
-				std::wcout << L"Future Level: " << (featureLevel>>12) << L"_" << ((featureLevel>>8)&0xF) << std::endl;
+				std::wcout << L"Feature Level: " << (featureLevel>>12) << L"_" << ((featureLevel>>8)&0xF) << std::endl;
 				break;
 			}
 		}
